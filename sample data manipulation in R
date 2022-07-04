@@ -38,13 +38,11 @@ library(dplyr)
 data3 <- read.csv("C:\\Users\\Greg Mack\\Desktop\\IXIS\\DataAnalyst_Ecom_data_addsToCart.csv")
 
 dim(data3) #--> 13 rows
-summary(data3) #--> Yr, mnth, addToCart data
+summary(data3) #--> Yr, mnth, addToCart
 
 data3$dim_month <- sprintf("%02d", as.numeric(data3$dim_month))#change month to 2 digits
 
-
-#remove non-pertinent data
-data1_2 <- subset(data1, select = -c(dim_deviceCategory))
+data1_2 <- subset(data1, select = -c(dim_deviceCategory)) #remove non-pertinent data
 
 #aggregating data1_2 data grouped by date, irrespective of device
 data1_2 <- data1 %>%
@@ -57,15 +55,34 @@ data1_2 <- data1 %>%
 
 
 data1_2$ECR <- data1_2$total_transactions/data1_2$total_sessions #add conversion ratio
-
 data4 <- merge(data1_2, data3, by=c("dim_year", "dim_month"), all.x = TRUE)# left join on month_year
 
-data4$abs_diff <- data4$ECR - lag(data4$ECR) #ECR difference between successive rows
-data4$rel_diff <- (data4$ECR - lag(data4$ECR))/lag(data4$ECR) #rel ECR difference b/w successive rows
+#creating abs and rel difference functions
+abs_diff <- function(x){
+  x - lag(x)
+}
+
+rel_diff <- function(x){
+  y <- (x - lag(x))/lag(x)
+}
+
+#absolute difference
+data4$total_sessions_diff <- abs_diff(data4$total_sessions)
+data4$total_transactions_dff <- abs_diff(data4$total_transactions)
+data4$total_qty_diff <- abs_diff(data4$total_qty)
+data4$ECR_diff <- abs_diff(data4$ECR)
+data4$addsToCart_diff <- abs_diff(data4$addsToCart)
+#relative difference
+data4$total_sessions_reldiff <- rel_diff(data4$total_sessions)
+data4$total_transactions_reldff <- rel_diff(data4$total_transactions)
+data4$total_qty_reldiff <- rel_diff(data4$total_qty)
+data4$ECR_diff <- rel_diff(data4$ECR)
+data4$addsToCart_reldiff <- rel_diff(data4$addsToCart)
 
 data5 <- tail(data4, n=2) # show only last 2 rows
 
 #--------------------Export to xlsx-----------------------------
+
 install.packages("openxlsx")
 library(openxlsx)
 
@@ -80,4 +97,4 @@ writeData(workbook1, "Devices",
 writeData(workbook1, "Most Recent Months", 
           x = data5)
 # save xlsx object
-saveWorkbook(workbook1, "C:\\Users\\Greg Mack\\Desktop\\IXIS\\IXIS_project.xlsx", overwrite = TRUE)
+saveWorkbook(workbook1, "C:\\Users\\Greg Mack\\Desktop\\IXIS\\IXIS_deliverable.xlsx", overwrite = TRUE)
