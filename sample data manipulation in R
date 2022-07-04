@@ -1,0 +1,82 @@
+#----------------------------Month-Device-----------------------------
+data1 <- read.csv("C:\\Users\\Greg Mack\\Desktop\\IXIS\\DataAnalyst_Ecom_data_sessionCounts.csv", 
+                  header = TRUE)
+dim(data1) #--> 776 rows
+summary(data1) #--> date data is str
+
+data1$dim_date <- as.Date(data1$dim_date, "%m/%d/%Y") #set date column to date
+data1$dim_month <- strftime(data1$dim_date, "%m") #segregate month into respective columns
+data1$dim_year <- strftime(data1$dim_date, "%Y") #segregate yr into respective columns
+data1$dim_year <- gsub("00", "20", data1$dim_year) #replace '00' with century
+
+data1 <- subset(data1, select = -c(dim_browser, dim_date)) #remove non-pertinent attributes
+
+#searching for any rows that are blank or have 'NA'
+blanks <- data1 %>%
+  filter_all(any_vars(.%in% c("")))
+blanks
+NAs <- data1 %>%
+  filter_all(any_vars(.%in% c("NA")))
+NAs
+
+
+#aggregating data grouped by date, device
+data2 <- data1 %>%
+  group_by(dim_year, dim_month, dim_deviceCategory) %>%
+  summarize(
+    total_sessions = sum(sessions, na.rm = TRUE),
+    total_transactions = sum(transactions, na.rm = TRUE),
+    total_qty = sum(QTY, na.rm = TRUE),
+  )
+
+#add conversion ratio
+data2$ECR <- data2$total_transactions/data2$total_sessions
+#-----------------------Month over Month ----------------------------
+data3 <- read.csv("C:\\Users\\Greg Mack\\Desktop\\IXIS\\DataAnalyst_Ecom_data_addsToCart.csv")
+
+dim(data3) #--> 13 rows
+summary(data3) #--> Yr, mnth, addToCart data
+
+data3$dim_month <- sprintf("%02d", as.numeric(data3$dim_month))#change month to 2 digits
+
+
+#remove non-pertinent data
+data1_2 <- subset(data1, select = -c(dim_deviceCategory))
+
+#aggregating data1_2 data grouped by date, irrespective of device
+data1_2 <- data1 %>%
+  group_by(dim_year, dim_month) %>%
+  summarize(
+    total_sessions = sum(sessions, na.rm = TRUE),
+    total_transactions = sum(transactions, na.rm = TRUE),
+    total_qty = sum(QTY, na.rm = TRUE)
+  )
+
+
+data1_2$ECR <- data1_2$total_transactions/data1_2$total_sessions #add conversion ratio
+
+data4 <- merge(data1_2, data3, by=c("dim_year", "dim_month"), all.x = TRUE)# left join on month_year
+
+data4$abs_diff <- data4$ECR - lag(data4$ECR) #ECR difference between successive rows
+data4$rel_diff <- (data4$ECR - lag(data4$ECR))/lag(data4$ECR) #rel ECR difference b/w successive rows
+
+data5 <- tail(data4, n=2) # show only last 2 rows
+
+#--------------------Export to xlsx-----------------------------
+View(data3)
+#installing openxls
+install.packages("openxlsx")
+library(openxlsx)
+
+
+workbook1 <- createWorkbook() #create empty excel workbook 
+# add worksheets to workbook
+addWorksheet(workbook1, "Devices")
+addWorksheet(workbook1, "Most Recent Months")
+# populate data w/ pertinent data given by IXIS
+writeData(workbook1, "Devices", 
+          x = data2)
+writeData(workbook1, "Most Recent Months", 
+          x = data5)
+# save xlsx object
+saveWorkbook(workbook1, "C:\\Users\\Greg Mack\\Desktop\\IXIS\\IXIS_project.xlsx", overwrite = TRUE)
