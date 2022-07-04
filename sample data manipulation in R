@@ -32,6 +32,9 @@ data2 <- data1 %>%
 #add conversion ratio
 data2$ECR <- data2$total_transactions/data2$total_sessions
 #-----------------------Month over Month ----------------------------
+install.packages("dplyr")
+library(dplyr)
+
 data3 <- read.csv("C:\\Users\\Greg Mack\\Desktop\\IXIS\\DataAnalyst_Ecom_data_addsToCart.csv")
 
 dim(data3) #--> 13 rows
@@ -63,8 +66,6 @@ data4$rel_diff <- (data4$ECR - lag(data4$ECR))/lag(data4$ECR) #rel ECR differenc
 data5 <- tail(data4, n=2) # show only last 2 rows
 
 #--------------------Export to xlsx-----------------------------
-View(data3)
-#installing openxls
 install.packages("openxlsx")
 library(openxlsx)
 
