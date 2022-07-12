@@ -1,0 +1,67 @@
+------------------------------DATAFRAME CREATION------------------------------------------------------------
+data1 <- read.csv("C:\\Users\\Greg Mack\\Desktop\\IXIS\\DataAnalyst_Ecom_data_sessionCounts.csv", 
+                  header = TRUE)
+dim(data1) #--> 776 rows
+summary(data1) #--> date data is str
+
+data1$dim_date <- as.Date(data1$dim_date, "%m/%d/%Y") #set date column to date
+data1$dim_month <- strftime(data1$dim_date, "%m") #segregate month into respective columns
+data1$dim_year <- strftime(data1$dim_date, "%Y") #segregate yr into respective columns
+data1$dim_year <- gsub("00", "20", data1$dim_year) #replace '00' with century
+
+data1 <- subset(data1, select = -c(dim_browser, dim_date)) #remove non-pertinent attributes
+
+#searching for any rows that are blank or have 'NA'
+blanks <- data1 %>%
+  filter_all(any_vars(.%in% c("")))
+blanks
+NAs <- data1 %>%
+  filter_all(any_vars(.%in% c("NA")))
+NAs
+
+
+#aggregating data grouped by date, device
+data2 <- data1 %>%
+  group_by(dim_year, dim_month, dim_deviceCategory) %>%
+  summarize(
+    total_sessions = sum(sessions, na.rm = TRUE),
+    total_transactions = sum(transactions, na.rm = TRUE),
+    total_qty = sum(QTY, na.rm = TRUE),
+  )
+
+#add conversion ratio
+data2$ECR <- data2$total_transactions/data2$total_sessions
+
+
+-----------------------------BARPLOT Total Transactions by Device 2012 vs 2013--------------------------- 
+
+summary_transactions <- tapply(data2$total_transactions, list(device = data2$dim_deviceCategory, year = data2$dim_year),
+                       FUN = sum, na.rm=TRUE)
+
+
+
+par(mfrow = c(1,2))
+barplot(summary_transactions, xlab="Calendar Year", ylab= "Total Transactions",  col =  c("blue", "green", "red"),
+        beside = TRUE, legend.text = rownames(summary_transactions), args.legend = list(title = "Devices", x = "topright"))
+
+# overlay onto grid
+grid(nx = NULL, ny = NULL, lwd = 1, lty = 1, col = "gray")
+par(new = TRUE)
+barplot(summary_transactions, xlab="Calendar Year", ylab= "Total Transactions",  col =  c("blue", "green", "red"),
+        beside = TRUE, legend.text = rownames(summary_transactions), args.legend = list(title = "Devices", x = "topright"))
+
+-----------------------------BARPLOT Total Sessions by Device 2012 vs 2013--------------------------------
+
+summary_sessions <- tapply(data2$total_sessions, list(device = data2$dim_deviceCategory, year = data2$dim_year),
+                       FUN = sum, na.rm=TRUE)
+                       
+ 
+par(mfrow = c(1,2))
+barplot(summary_sessions, xlab="Calendar Year", ylab= "Total Sessions",  col =  c("blue", "green", "red"),
+        beside = TRUE, legend.text = rownames(summary_sessions), args.legend = list(title = "Devices", x = "topright"))
+
+# overlay onto grid
+grid(nx = NULL, ny = NULL, lwd = 1, lty = 1, col = "gray")
+par(new = TRUE)
+barplot(summary_sessions, xlab="Calendar Year", ylab= "Total Sessions",  col =  c("blue", "green", "red"),
+        beside = TRUE, legend.text = rownames(summary_sessions), args.legend = list(title = "Devices", x = "topright"))
